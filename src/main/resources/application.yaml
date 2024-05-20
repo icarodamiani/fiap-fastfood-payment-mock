@@ -1,0 +1,50 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: fiap-payment
+
+  cors:
+    allowed-origins: "http://localhost:8080"
+    allowed-headers: "Authorization, Content-Type, Accept"
+    allowed-methods: "GET,POST,PUT,DELETE,OPTIONS,HEAD,TRACE,CONNECT,PATCH"
+    max-age: 300
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  data:
+    mongodb:
+      repositories: true
+      port: ${MONGODB_PORT:27020}
+      auto-index-creation: true
+      uuid-representation: standard
+      host: ${MONGODB_HOST:localhost}
+      authentication-database: admin
+      database: ${MONGODB_DATABASE:payment}
+      username: ${MONGODB_USERNAME:root}
+      password: ${MONGODB_PASSWORD:rootpassword}
+
+payment:
+  sqs:
+    queue: ${PAYMENT_MOCK_QUEUE_NAME:fastfood-payment-mock-queue}
+
+aws:
+  sqs:
+    numberOfMessages: 5
+    waitTimeMessage: 10
+    numberOfRetries: 10
+    visibilityTimeOut: 30
+
+management:
+  endpoint:
+    loggers:
+      enabled: true
+    health:
+      probes:
+        enabled: true
+      show-details: "ALWAYS"
+  endpoints:
+    web:
+      exposure:
+        include: "*"
