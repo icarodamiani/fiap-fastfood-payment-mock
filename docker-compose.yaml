@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: docker.io/zcube/bitnami-compat-mongodb:5.0
+    container_name: fastfood-mock-mongo
+    ports:
+      - "27020:27017"
+    networks:
+      - fastfood-mock-network
+    environment:
+      MONGODB_USERNAME: common_user
+      MONGODB_PASSWORD: password123
+      MONGODB_DATABASE: fastfood
+      MONGODB_ROOT_PASSWORD: rootpassword
+    volumes:
+      - 'mongodb_data:/fastfood'
+
+volumes:
+  mongodb_data:
+    driver: local
+  sqs_data:
+    driver: local
+
+networks:
+  fastfood-mock-network:
+    driver: bridge
