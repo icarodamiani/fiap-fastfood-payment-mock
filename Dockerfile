@@ -1,6 +1,15 @@
 FROM eclipse-temurin:21-jdk-alpine
 
-EXPOSE 8081
-ADD build/libs/payment-mock-api-*.jar /opt/api.jar
+ARG MONGODB_USERNAME
+ENV MONGODB_USERNAME $MONGODB_USERNAME
+
+ARG MONGODB_PASSWORD
+ENV MONGODB_PASSWORD $MONGODB_PASSWORD
+
+ARG MONGODB_HOST
+ENV MONGODB_HOST $MONGODB_HOST
+
+EXPOSE 8080
+ADD target/fastfood-*.jar /opt/api.jar
 ENTRYPOINT exec java $JAVA_OPTS $APPDYNAMICS -jar /opt/api.jar
 
