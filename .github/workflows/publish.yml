@@ -1,0 +1,30 @@
+name: Build&Publish product
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+
+jobs:
+  build:
+    environment:
+      name: dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/run-build
+        with:
+          GH_USERNAME: ${{vars.GH_USERNAME}}
+          GH_TOKEN: ${{secrets.GH_TOKEN}}
+          EXCLUDE_PROJECT: fastfood-payment-mock-api

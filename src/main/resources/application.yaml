@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: fastfood-payment-mock
+
+  cors:
+    allowed-origins: "http://localhost:8080"
+    allowed-headers: "Authorization, Content-Type, Accept"
+    allowed-methods: "GET,POST,PUT,DELETE,OPTIONS,HEAD,TRACE,CONNECT,PATCH"
+    max-age: 300
+
+  data:
+    mongodb:
+      repositories: true
+      port: ${MONGODB_PORT:27017}
+      auto-index-creation: true
+      uuid-representation: standard
+      host: ${MONGODB_HOST:localhost}
+      authentication-database: admin
+      database: ${MONGODB_DATABASE:payment-mock}
+      username: ${MONGODB_USERNAME:root}
+      password: ${MONGODB_PASSWORD:rootpassword}
+
+payment:
+  sqs:
+    queue: ${PAYMENT_MOCK_QUEUE_NAME:fastfood_payment_mock_queue}
+
+aws:
+  sqs:
+    numberOfMessages: 5
+    waitTimeMessage: 10
+    numberOfRetries: 10
+    visibilityTimeOut: 30
+
+management:
+  endpoint:
+    loggers:
+      enabled: true
+    health:
+      probes:
+        enabled: true
+      show-details: "ALWAYS"
+  endpoints:
+    web:
+      exposure:
+        include: "*"
