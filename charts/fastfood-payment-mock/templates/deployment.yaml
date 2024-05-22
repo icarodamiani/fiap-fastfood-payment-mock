@@ -52,12 +52,14 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
+            initialDelaySeconds: 30
             httpGet:
-              path: /
+              path: /actuator/health/liveness
               port: http
           readinessProbe:
+            initialDelaySeconds: 30
             httpGet:
-              path: /
+              path: /actuator/health/readiness
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

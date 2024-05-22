@@ -28,6 +28,26 @@
         <awssdk.version>2.20.7</awssdk.version>
     </properties>
 
+    <scm>
+        <connection>scm:git:https://github.com/icarodamiani/fiap-fastfood-payment-mock.git</connection>
+        <url>https://github.com/icarodamiani/fiap-fastfood-payment-mock.git</url>
+        <developerConnection>scm:git:https://github.com/icarodamiani/fiap-fastfood-payment-mock.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>gh-release</id>
+            <name>releases</name>
+            <url>https://maven.pkg.github.com/icarodamiani/fiap-fastfood-payment-mock</url>
+        </repository>
+        <snapshotRepository>
+            <id>gh-snapshot</id>
+            <name>snapshots</name>
+            <url>https://maven.pkg.github.com/icarodamiani/fiap-fastfood-payment-mock</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 
     <repositories>
         <repository>
