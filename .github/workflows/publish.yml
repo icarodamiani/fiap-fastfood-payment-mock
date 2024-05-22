@@ -27,4 +27,3 @@ jobs:
         with:
           GH_USERNAME: ${{vars.GH_USERNAME}}
           GH_TOKEN: ${{secrets.GH_TOKEN}}
-          EXCLUDE_PROJECT: fastfood-payment-mock-api
