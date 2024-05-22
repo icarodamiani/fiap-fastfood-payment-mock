@@ -19,9 +19,9 @@ spec:
       {{- end }}
       labels:
         {{- include "fastfood-payment-mock.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+          {{- with .Values.podLabels }}
+          {{- toYaml . | nindent 8 }}
+          {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -38,26 +38,28 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             {{- range $name, $db := .Values.database }}
-              - name: "{{ $db.username.name }}"
-                value: "{{ $db.username.value }}"
-              - name: "{{ $db.password.name }}"
-                value: "{{ $db.password.value }}"
-              - name: "{{ $db.host.name }}"
-                value: "{{ $db.host.value }}"
-              - name: "{{ $db.port.name }}"
-                value: "{{ $db.port.value }}"
+            - name: "{{ $db.username.name }}"
+              value: "{{ $db.username.value }}"
+            - name: "{{ $db.password.name }}"
+              value: "{{ $db.password.value }}"
+            - name: "{{ $db.host.name }}"
+              value: "{{ $db.host.value }}"
+            - name: "{{ $db.port.name }}"
+              value: "{{ $db.port.value }}"
             {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
+            initialDelaySeconds: 30
             httpGet:
-              path: /
+              path: /actuator/health/liveness
               port: http
           readinessProbe:
+            initialDelaySeconds: 30
             httpGet:
-              path: /
+              path: /actuator/health/readiness
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
