@@ -50,9 +50,13 @@ docker login registry-1.docker.io
 ```
 3 -
 ```
-aws eks update-kubeconfig --name {CLUSTER_NAME} --region={AWS_REGION}
+docker build . -t icarodamiani/fastfood-payment-mock:latest
 ```
 4 -
+```
+aws eks update-kubeconfig --name {CLUSTER_NAME} --region={AWS_REGION}
+```
+5 -
 ```
 helm upgrade --install fastfood-order charts/fastfood-payment-mock \
 --kubeconfig $HOME/.kube/config \
