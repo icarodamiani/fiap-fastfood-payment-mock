@@ -32,6 +32,9 @@ aws:
     visibilityTimeOut: 30
 
 management:
+  health:
+    probes:
+      enabled: true
   endpoint:
     loggers:
       enabled: true
