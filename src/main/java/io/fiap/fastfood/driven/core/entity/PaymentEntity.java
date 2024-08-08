@@ -16,8 +16,8 @@ public record PaymentEntity(
     BigDecimal amount,
     @Field("data_hora")
     LocalDateTime dateTime,
-    @Field("id_pedido")
-    String orderId,
+    @Field("numero_pedido")
+    String orderNumber,
     @Field("uri_resposta")
     String webhook,
     @Field("status")
@@ -28,7 +28,7 @@ public record PaymentEntity(
         private String method;
         private BigDecimal amount;
         private LocalDateTime dateTime;
-        private String orderId;
+        private String orderNumber;
         private String webhook;
         private String status;
 
@@ -59,8 +59,8 @@ public record PaymentEntity(
             return this;
         }
 
-        public PaymentEntityBuilder withOrderId(String orderId) {
-            this.orderId = orderId;
+        public PaymentEntityBuilder withOrderNumber(String orderNumber) {
+            this.orderNumber = orderNumber;
             return this;
         }
 
@@ -75,7 +75,7 @@ public record PaymentEntity(
         }
 
         public PaymentEntity build() {
-            return new PaymentEntity(id, method, amount, dateTime, orderId, webhook, status);
+            return new PaymentEntity(id, method, amount, dateTime, orderNumber, webhook, status);
         }
     }
 

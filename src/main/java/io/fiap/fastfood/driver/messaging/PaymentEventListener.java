@@ -60,7 +60,7 @@ public class PaymentEventListener implements CommandLineRunner {
                             Objects.requireNonNull(triggerContext.lastScheduledExecutionTime()),
                             new Date(),
                             null))
-                    .flatMapMany(__ -> service.receiveAndHandlePaymentStatus())
+                    .flatMapMany(__ -> service.handleEvent())
                     .doOnComplete(() -> triggerContext.update(
                         Objects.requireNonNull(triggerContext.lastScheduledExecutionTime()),
                         Objects.requireNonNull(triggerContext.lastActualExecutionTime()),

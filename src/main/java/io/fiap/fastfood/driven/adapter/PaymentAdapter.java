@@ -10,6 +10,7 @@ import io.fiap.fastfood.driven.core.domain.payment.port.outbound.PaymentPort;
 import io.fiap.fastfood.driven.core.entity.PaymentEntity;
 import io.fiap.fastfood.driven.core.exception.BadRequestException;
 import io.fiap.fastfood.driven.core.exception.DuplicatedKeyException;
+import io.fiap.fastfood.driven.core.messaging.MessagingPort;
 import io.fiap.fastfood.driven.repository.PaymentRepository;
 import io.vavr.CheckedFunction1;
 import io.vavr.CheckedFunction2;
@@ -20,17 +21,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
-import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
-import software.amazon.awssdk.services.sqs.model.DeleteMessageResponse;
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
-import software.amazon.awssdk.services.sqs.model.ReceiptHandleIsInvalidException;
-import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
-import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 @Component
@@ -38,18 +35,19 @@ public class PaymentAdapter implements PaymentPort {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PaymentAdapter.class);
 
+    private final MessagingPort messagingPort;
     private final PaymentRepository repository;
     private final PaymentMapper mapper;
     private final ObjectMapper objectMapper;
     private final SqsAsyncClient sqsClient;
 
-    private final String paymentQueue;
+    private final String queue;
 
     private final String numberOfMessages;
     private final String waitTimeMessage;
     private final String visibilityTimeOut;
 
-    public PaymentAdapter(SqsAsyncClient sqsClient,
+    public PaymentAdapter(MessagingPort messagingPort, SqsAsyncClient sqsClient,
                           PaymentRepository repository,
                           PaymentMapper mapper,
                           ObjectMapper objectMapper,
@@ -57,6 +55,7 @@ public class PaymentAdapter implements PaymentPort {
                           @Value("${aws.sqs.numberOfMessages}") String numberOfMessages,
                           @Value("${aws.sqs.waitTimeMessage}") String waitTimeMessage,
                           @Value("${aws.sqs.visibilityTimeOut}") String visibilityTimeOut) {
+        this.messagingPort = messagingPort;
         this.sqsClient = sqsClient;
         this.numberOfMessages = numberOfMessages;
         this.waitTimeMessage = waitTimeMessage;
@@ -64,17 +63,21 @@ public class PaymentAdapter implements PaymentPort {
         this.repository = repository;
         this.mapper = mapper;
         this.objectMapper = objectMapper;
-        this.paymentQueue = paymentQueue;
+        this.queue = paymentQueue;
     }
 
     @Override
     public Mono<Payment> createPayment(Payment payment) {
-        return repository.findByOrderId(payment.orderId())
+        return repository.findByOrderNumber(payment.orderNumber())
             .next()
             .flatMap(c -> Mono.defer(() -> Mono.<PaymentEntity>error(DuplicatedKeyException::new)))
-            .switchIfEmpty(Mono.defer(() -> repository.save(mapper.entityFromDomain(payment))))
+            .switchIfEmpty(Mono.defer(() -> repository.save(
+                mapper.entityFromDomain(
+                    Payment.PaymentBuilder.from(payment).withId(null).build()
+                )
+            )))
             .map(mapper::domainFromEntity)
-            .flatMap(this::sendPaymentUpdatedMessage);
+            .flatMap(this::sendPaymentToAsyncProcessing);
     }
 
     @Override
@@ -113,53 +116,17 @@ public class PaymentAdapter implements PaymentPort {
     }
 
     @Override
-    public Mono<ReceiveMessageResponse> receivePayment() {
-        return receive(paymentQueue);
+    public Flux<Message> readPayment(Function1<Payment, Mono<Payment>> handle) {
+        return messagingPort.read(queue, handle, readEvent());
     }
 
-    private Mono<ReceiveMessageResponse> receive(String queue) {
-        return getQueueUrl().apply(queue)
-            .map(GetQueueUrlResponse::queueUrl)
-            .map(queueUrl -> ReceiveMessageRequest.builder()
-                .queueUrl(queueUrl)
-                .waitTimeSeconds(Integer.parseInt(waitTimeMessage))
-                .maxNumberOfMessages(Integer.parseInt(numberOfMessages))
-                .visibilityTimeout(Integer.parseInt(visibilityTimeOut))
-                .build()
-            ).flatMap(request -> Mono.fromFuture(sqsClient.receiveMessage(request)));
-    }
-
-    @Override
-    public Mono<DeleteMessageResponse> acknowledgePayment(Message message) {
-        return acknowledge(paymentQueue, message);
-    }
-
-    public Mono<DeleteMessageResponse> acknowledge(String queue, Message message) {
-        return getQueueUrl().apply(queue)
-            .flatMap(q -> Mono.fromFuture(
-                    sqsClient.deleteMessage(DeleteMessageRequest.builder()
-                        .queueUrl(q.queueUrl())
-                        .receiptHandle(message.receiptHandle())
-                        .build())
-                )
-            )
-            .doOnSuccess(deleteMessageResponse -> LOGGER.info("queue message has been deleted: {}", message.messageId()))
-            .onErrorResume(ReceiptHandleIsInvalidException.class, e -> Mono.empty())
-            .doOnError(throwable -> LOGGER.error("an error occurred while deleting message.", throwable));
+    private CheckedFunction1<Message, Payment> readEvent() {
+        return message -> objectMapper.readValue(message.body(), Payment.class);
     }
 
 
-    public Mono<Payment> sendPaymentUpdatedMessage(Payment payload) {
-        return Mono.just(serializePayload().unchecked().apply(payload))
-            .zipWith(getQueueUrl().apply(paymentQueue))
-            .map(t -> buildMessageRequest().unchecked().apply(t))
-            .doOnError(throwable -> LOGGER.error("Failed to prepare message due to error. {}", throwable.getMessage()))
-            .flatMap(message -> Mono.fromFuture(sqsClient.sendMessage(message)))
-            .doOnError(throwable -> LOGGER.error("Failed to send message due to error. {}", throwable.getMessage()))
-            .doOnSuccess(response ->
-                LOGGER.debug("Message published to queue. Message ID: {} Body:  {}", response.messageId(),
-                    response.md5OfMessageBody()))
-            .map(__ -> payload);
+    public Mono<Payment> sendPaymentToAsyncProcessing(Payment payment) {
+        return messagingPort.send(queue, payment, serializePayload());
     }
 
     private <T> CheckedFunction1<T, String> serializePayload() {

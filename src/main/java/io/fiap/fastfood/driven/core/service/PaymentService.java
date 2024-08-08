@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fiap.fastfood.driven.core.domain.model.Payment;
 import io.fiap.fastfood.driven.core.domain.payment.port.inbound.PaymentUseCase;
 import io.fiap.fastfood.driven.core.domain.payment.port.outbound.PaymentPort;
-import io.fiap.fastfood.driven.core.exception.BadRequestException;
-import io.fiap.fastfood.driven.core.exception.BusinessException;
-import io.fiap.fastfood.driven.core.exception.NotFoundException;
-import io.vavr.CheckedFunction1;
+import io.vavr.Function1;
 import java.net.URI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +14,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import software.amazon.awssdk.services.sqs.model.DeleteMessageResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
-import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
 @Service
 public class PaymentService implements PaymentUseCase {
@@ -43,43 +38,21 @@ public class PaymentService implements PaymentUseCase {
     }
 
     @Override
-    public Flux<DeleteMessageResponse> receiveAndHandlePaymentStatus() {
-        return paymentPort.receivePayment()
-            .map(ReceiveMessageResponse::messages)
-            .flatMapMany(messages ->
-                Flux.fromIterable(messages)
-                    .flatMap(m -> Mono.just(readEvent().unchecked().apply(m))
-                        .flatMap(this::processAndNotify)
-                        .map(__ -> m)
-                        .onErrorResume(t ->
-                                t instanceof NotFoundException
-                                    || t instanceof BusinessException
-                                    || t instanceof BadRequestException,
-                            throwable -> {
-                                LOGGER.error(throwable.getMessage(), throwable);
-                                return Mono.just(m);
-                            }
-                        )
-                        .flatMap(paymentPort::acknowledgePayment)
-                    )
-            );
+    public Flux<Message> handleEvent() {
+        return paymentPort.readPayment(handle());
     }
 
-    public Mono<Payment> processAndNotify(Payment payment) {
-        return paymentPort.updatePayment(payment.id(),
+    private Function1<Payment, Mono<Payment>> handle() {
+        return payment -> paymentPort.updatePayment(payment.id(),
                 "[{\"op\": \"replace\",\"path\": \"/status\",\"value\": \"PAID\"}]")
             .flatMap(this::notify)
-            .map(__ -> payment);
-    }
-
-    private CheckedFunction1<Message, Payment> readEvent() {
-        return message -> mapper.readValue(message.body(), Payment.class);
+            .map(unused -> payment);
     }
 
     private Mono<ResponseEntity<Void>> notify(Payment payment) {
         return webClient.post()
             .uri(URI.create(payment.webhook()))
-            .body(BodyInserters.fromValue(payment))
+            .body(BodyInserters.fromValue(Payment.PaymentBuilder.from(payment).withStatus("PAID").build()))
             .retrieve()
             .toBodilessEntity();
     }

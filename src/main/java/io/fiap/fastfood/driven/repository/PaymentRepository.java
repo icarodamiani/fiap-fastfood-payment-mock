@@ -6,5 +6,5 @@ import reactor.core.publisher.Flux;
 
 public interface PaymentRepository extends ReactiveCrudRepository<PaymentEntity, String> {
 
-    Flux<PaymentEntity> findByOrderId(String orderId);
+    Flux<PaymentEntity> findByOrderNumber(String orderId);
 }

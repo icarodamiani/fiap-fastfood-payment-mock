@@ -10,7 +10,7 @@ public record Payment(
     String method,
     BigDecimal amount,
     LocalDateTime dateTime,
-    String orderId,
+    String orderNumber,
     String webhook,
     String status) implements Serializable {
 
@@ -20,7 +20,7 @@ public record Payment(
         private String method;
         private BigDecimal amount;
         private LocalDateTime dateTime;
-        private String orderId;
+        private String orderNumber;
         private String webhook;
         private String status;
 
@@ -34,7 +34,7 @@ public record Payment(
         public static PaymentBuilder from(Payment payment) {
             return PaymentBuilder.builder()
                 .withId(payment.id)
-                .withOrderId(payment.orderId)
+                .withOrderNumber(payment.orderNumber)
                 .withDateTime(payment.dateTime)
                 .withMethod(payment.method)
                 .withAmount(payment.amount)
@@ -62,8 +62,8 @@ public record Payment(
             return this;
         }
 
-        public PaymentBuilder withOrderId(String orderId) {
-            this.orderId = orderId;
+        public PaymentBuilder withOrderNumber(String orderNumber) {
+            this.orderNumber = orderNumber;
             return this;
         }
         public PaymentBuilder withWebhook(String webhook) {
@@ -77,7 +77,7 @@ public record Payment(
         }
 
         public Payment build() {
-            return new Payment(id, method, amount, dateTime, orderId, webhook, status);
+            return new Payment(id, method, amount, dateTime, orderNumber, webhook, status);
         }
     }
 }

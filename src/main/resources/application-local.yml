@@ -11,4 +11,5 @@ server:
 spring:
   data:
     mongodb:
-      port: 27020
+      port: 27017
+      #port: 27020
